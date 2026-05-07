@@ -1,0 +1,16 @@
+<svg width="100%" viewBox="0 0 680 361.7" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">G logo in Google colors</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">The letter G styled in three Google brand colors: blue on top, red in the middle, green on the bottom, on a transparent background</desc>
+
+  <defs>
+    <clipPath id="clip-b"><rect x="0" y="0" width="680" height="152"/></clipPath>
+    <clipPath id="clip-r"><rect x="0" y="152" width="680" height="68"/></clipPath>
+    <clipPath id="clip-g"><rect x="0" y="220" width="680" height="110"/></clipPath>
+  </defs>
+
+  <text clip-path="url(#clip-b)" font-family="'Arial Rounded MT Bold','Century Gothic','Trebuchet MS',Arial,sans-serif" font-size="280" font-weight="bold" x="340" y="290" text-anchor="middle" fill="#4285F4" style="fill:rgb(66, 133, 244);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Arial Rounded MT Bold&quot;, &quot;Century Gothic&quot;, &quot;Trebuchet MS&quot;, Arial, sans-serif;font-size:280px;font-weight:700;text-anchor:middle;dominant-baseline:auto">G</text>
+
+  <text clip-path="url(#clip-r)" font-family="'Arial Rounded MT Bold','Century Gothic','Trebuchet MS',Arial,sans-serif" font-size="280" font-weight="bold" x="340" y="290" text-anchor="middle" fill="#EA4335" style="fill:rgb(234, 67, 53);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Arial Rounded MT Bold&quot;, &quot;Century Gothic&quot;, &quot;Trebuchet MS&quot;, Arial, sans-serif;font-size:280px;font-weight:700;text-anchor:middle;dominant-baseline:auto">G</text>
+
+  <text clip-path="url(#clip-g)" font-family="'Arial Rounded MT Bold','Century Gothic','Trebuchet MS',Arial,sans-serif" font-size="280" font-weight="bold" x="340" y="290" text-anchor="middle" fill="#34A853" style="fill:rgb(52, 168, 83);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Arial Rounded MT Bold&quot;, &quot;Century Gothic&quot;, &quot;Trebuchet MS&quot;, Arial, sans-serif;font-size:280px;font-weight:700;text-anchor:middle;dominant-baseline:auto">G</text>
+</svg>
