@@ -860,7 +860,7 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Messages — {len(rows)} result(s)")
-        win.geometry("860x460")
+        win.geometry("860x560")
         win.minsize(600, 250)
 
         ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
@@ -1342,7 +1342,7 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Files — {len(rows)} result(s)")
-        win.geometry("900x460")
+        win.geometry("900x560")
         win.minsize(600, 250)
 
         ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
