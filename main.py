@@ -860,13 +860,16 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Messages — {len(rows)} result(s)")
-        win.geometry("860x800")
-        win.minsize(600, 600)
+        win.geometry("860x600")
+        win.minsize(600, 400)
+        win.columnconfigure(0, weight=1)
+        win.rowconfigure(1, weight=1)
 
+        # Row 0: info labels
         ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
-                  style="Hint.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
+                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(10, 2))
         ttk.Label(win, text=f"{len(rows)} message(s) matched  •  max 50 shown",
-                  style="Hint.TLabel").pack(anchor="w", padx=12, pady=(0, 6))
+                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(28, 6))
 
         # Detect available columns (GAM may capitalise differently)
         sample = rows[0]
@@ -910,17 +913,13 @@ class GAMGui(tk.Tk):
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
 
-        btn_row = tk.Frame(win)
-        btn_row.pack(fill="x", padx=12, pady=(0, 10), side="bottom")
-        ttk.Button(btn_row, text="Export .csv", command=lambda: _export_gmail("csv")).pack(side="left")
-        ttk.Button(btn_row, text="Export .txt", command=lambda: _export_gmail("txt")).pack(side="left", padx=(6, 0))
-        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
-
+        # Row 1: treeview (expands)
         frame = tk.Frame(win)
-        frame.pack(fill="both", expand=True, padx=12, pady=(0, 4))
+        frame.grid(row=1, column=0, sticky="nsew", padx=12, pady=4)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
 
-        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse",
-                            height=min(len(rows), 20))
+        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
         col_widths = {"subject": 340, "from": 200, "date": 160, "user": 200}
         for col in display_cols:
             width = col_widths.get(col.lower(), 180)
@@ -930,15 +929,19 @@ class GAMGui(tk.Tk):
         vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         hsb = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
         tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
         tree.grid(row=0, column=0, sticky="nsew")
         vsb.grid(row=0, column=1, sticky="ns")
         hsb.grid(row=1, column=0, sticky="ew")
-        frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
 
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
+
+        # Row 2: buttons (always visible)
+        btn_row = tk.Frame(win)
+        btn_row.grid(row=2, column=0, sticky="ew", padx=12, pady=(4, 10))
+        ttk.Button(btn_row, text="Export .csv", command=lambda: _export_gmail("csv")).pack(side="left")
+        ttk.Button(btn_row, text="Export .txt", command=lambda: _export_gmail("txt")).pack(side="left", padx=(6, 0))
+        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
 
         self._theme_toplevel(win)
 
@@ -1344,18 +1347,15 @@ class GAMGui(tk.Tk):
         win = tk.Toplevel(self)
         win.title(f"Found Files — {len(rows)} result(s)")
         win.geometry("900x600")
-        win.minsize(600, 600)
+        win.minsize(600, 400)
+        win.columnconfigure(0, weight=1)
+        win.rowconfigure(1, weight=1)
 
+        # Row 0: info labels
         ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
-                  style="Hint.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
+                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(10, 2))
         ttk.Label(win, text=f"{len(rows)} file(s) matched  •  max 100 shown",
-                  style="Hint.TLabel").pack(anchor="w", padx=12, pady=(0, 6))
-
-        btn_row = tk.Frame(win)
-        btn_row.pack(fill="x", padx=12, pady=(0, 10), side="bottom")
-
-        frame = tk.Frame(win)
-        frame.pack(fill="both", expand=True, padx=12, pady=(0, 4))
+                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(28, 6))
 
         sample = rows[0]
         col_map = {k.lower(): k for k in sample.keys()}
@@ -1370,26 +1370,6 @@ class GAMGui(tk.Tk):
         if not display_cols:
             display_cols = list(sample.keys())
 
-        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse",
-                            height=min(len(rows), 20))
-        col_widths = {"name": 240, "owneremail": 200, "mimetype": 160, "size": 70, "modifiedtime": 150, "id": 200}
-        for col in display_cols:
-            width = col_widths.get(col.lower(), 150)
-            tree.heading(col, text=col)
-            tree.column(col, width=width, minwidth=60)
-
-        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
-        hsb = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
-        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb.grid(row=1, column=0, sticky="ew")
-        frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
-
-        for row in rows:
-            tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
-
         _drive_labels = {
             "name": "File Name", "id": "File ID", "mimetype": "MIME Type",
             "size": "Size (bytes)", "modifiedtime": "Modified Time", "owneremail": "Owner Email",
@@ -1399,9 +1379,7 @@ class GAMGui(tk.Tk):
         def _export(fmt):
             default = "drive_results.csv" if fmt == "csv" else "drive_results.txt"
             path = filedialog.asksaveasfilename(
-                parent=win,
-                title="Export Results",
-                initialfile=default,
+                parent=win, title="Export Results", initialfile=default,
                 defaultextension=f".{fmt}",
                 filetypes=[(f"{fmt.upper()} files", f"*.{fmt}"), ("All files", "*.*")],
             )
@@ -1425,6 +1403,32 @@ class GAMGui(tk.Tk):
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
 
+        # Row 1: treeview (expands)
+        frame = tk.Frame(win)
+        frame.grid(row=1, column=0, sticky="nsew", padx=12, pady=4)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+
+        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
+        col_widths = {"name": 240, "owneremail": 200, "mimetype": 160, "size": 70, "modifiedtime": 150, "id": 200}
+        for col in display_cols:
+            width = col_widths.get(col.lower(), 150)
+            tree.heading(col, text=col)
+            tree.column(col, width=width, minwidth=60)
+
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        hsb = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+
+        for row in rows:
+            tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
+
+        # Row 2: buttons (always visible)
+        btn_row = tk.Frame(win)
+        btn_row.grid(row=2, column=0, sticky="ew", padx=12, pady=(4, 10))
         ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
         ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
         ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
