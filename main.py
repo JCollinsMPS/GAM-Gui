@@ -11,7 +11,7 @@ import shlex
 import shutil
 import webbrowser
 
-VERSION = "26.5.7.04"
+VERSION = "26.5.14.01"
 
 
 class GAMGui(tk.Tk):
