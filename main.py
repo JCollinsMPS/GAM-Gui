@@ -403,7 +403,38 @@ class GAMGui(tk.Tk):
         self.log_area.tag_config("cmd", foreground="#c586c0")
         self.log_area.tag_config("preview", foreground="#ce9178")
 
-        ttk.Button(frame, text="Clear Log", command=self._clear_log).pack(anchor="e", pady=(6, 0))
+        log_btn_row = tk.Frame(frame)
+        log_btn_row.pack(anchor="e", pady=(6, 0))
+
+        def _export_log(fmt):
+            content = self.log_area.get("1.0", "end").strip()
+            if not content:
+                messagebox.showwarning("Export", "The log is empty.")
+                return
+            default = f"gam_log.{fmt}"
+            path = filedialog.asksaveasfilename(
+                parent=self, title="Export Log", initialfile=default,
+                defaultextension=f".{fmt}",
+                filetypes=[(f"{fmt.upper()} files", f"*.{fmt}"), ("All files", "*.*")],
+            )
+            if not path:
+                return
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    if fmt == "csv":
+                        writer = csv.writer(f)
+                        writer.writerow(["Line", "Text"])
+                        for i, line in enumerate(content.splitlines(), 1):
+                            writer.writerow([i, line])
+                    else:
+                        f.write(content + "\n")
+                messagebox.showinfo("Export", f"Log saved to:\n{path}")
+            except OSError as e:
+                messagebox.showerror("Export Failed", str(e))
+
+        ttk.Button(log_btn_row, text="Export .csv", command=lambda: _export_log("csv")).pack(side="left")
+        ttk.Button(log_btn_row, text="Export .txt", command=lambda: _export_log("txt")).pack(side="left", padx=(6, 0))
+        ttk.Button(log_btn_row, text="Clear Log", command=self._clear_log).pack(side="left", padx=(6, 0))
 
     def _build_drive_tab(self, parent):
         parent.columnconfigure(1, weight=1)
@@ -602,7 +633,43 @@ class GAMGui(tk.Tk):
         hsb.grid(row=1, column=0, sticky="ew")
 
         action_row = tk.Frame(parent)
-        action_row.grid(row=8, column=0, columnspan=3, sticky="e", pady=(8, 0))
+        action_row.grid(row=8, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+
+        def _export_classrooms(fmt):
+            rows = [tree.item(iid)["values"] for iid in tree.get_children()]
+            if not rows:
+                messagebox.showwarning("Export", "No results to export.", parent=self)
+                return
+            col_headings = ["Course ID", "Course Name", "Owner Email", "State"]
+            default = f"classrooms.{fmt}"
+            path = filedialog.asksaveasfilename(
+                parent=self, title="Export Results", initialfile=default,
+                defaultextension=f".{fmt}",
+                filetypes=[(f"{fmt.upper()} files", f"*.{fmt}"), ("All files", "*.*")],
+            )
+            if not path:
+                return
+            try:
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    if fmt == "csv":
+                        writer = csv.writer(f)
+                        writer.writerow(col_headings)
+                        for row in rows:
+                            writer.writerow(row)
+                    else:
+                        col_w = [max(len(col_headings[i]), max((len(str(r[i])) for r in rows), default=0)) for i in range(len(col_headings))]
+                        header = "  ".join(col_headings[i].ljust(col_w[i]) for i in range(len(col_headings)))
+                        sep = "  ".join("-" * w for w in col_w)
+                        f.write(f"{header}\n{sep}\n")
+                        for row in rows:
+                            f.write("  ".join(str(row[i]).ljust(col_w[i]) for i in range(len(col_headings))) + "\n")
+                messagebox.showinfo("Export", f"Saved {len(rows)} row(s) to:\n{path}", parent=self)
+            except OSError as e:
+                messagebox.showerror("Export Failed", str(e), parent=self)
+
+        ttk.Button(action_row, text="Export .csv", command=lambda: _export_classrooms("csv")).pack(side="left")
+        ttk.Button(action_row, text="Export .txt", command=lambda: _export_classrooms("txt")).pack(side="left", padx=(6, 0))
+
         delete_btn = ttk.Button(action_row, text="Delete Selected",
                                 command=lambda: self._confirm_delete_classrooms())
         delete_btn.pack(side="right")
@@ -801,9 +868,6 @@ class GAMGui(tk.Tk):
         ttk.Label(win, text=f"{len(rows)} message(s) matched  •  max 50 shown",
                   style="Hint.TLabel").pack(anchor="w", padx=12, pady=(0, 6))
 
-        frame = tk.Frame(win)
-        frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
-
         # Detect available columns (GAM may capitalise differently)
         sample = rows[0]
         col_map = {k.lower(): k for k in sample.keys()}
@@ -816,8 +880,44 @@ class GAMGui(tk.Tk):
         if not display_cols:
             display_cols = list(sample.keys())
 
+        def _export_gmail(fmt):
+            default = f"gmail_results.{fmt}"
+            path = filedialog.asksaveasfilename(
+                parent=win, title="Export Results", initialfile=default,
+                defaultextension=f".{fmt}",
+                filetypes=[(f"{fmt.upper()} files", f"*.{fmt}"), ("All files", "*.*")],
+            )
+            if not path:
+                return
+            try:
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    if fmt == "csv":
+                        writer = csv.writer(f)
+                        writer.writerow(display_cols)
+                        for row in rows:
+                            writer.writerow([row.get(c, "") for c in display_cols])
+                    else:
+                        col_w = {c: max(len(c), max((len(str(row.get(c, ""))) for row in rows), default=0)) for c in display_cols}
+                        header = "  ".join(c.ljust(col_w[c]) for c in display_cols)
+                        sep = "  ".join("-" * col_w[c] for c in display_cols)
+                        f.write(f"Query: {query}\n{header}\n{sep}\n")
+                        for row in rows:
+                            f.write("  ".join(str(row.get(c, "")).ljust(col_w[c]) for c in display_cols) + "\n")
+                messagebox.showinfo("Export", f"Saved {len(rows)} row(s) to:\n{path}", parent=win)
+            except OSError as e:
+                messagebox.showerror("Export Failed", str(e), parent=win)
+
+        btn_row = tk.Frame(win)
+        btn_row.pack(fill="x", padx=12, pady=(0, 10), side="bottom")
+        ttk.Button(btn_row, text="Export .csv", command=lambda: _export_gmail("csv")).pack(side="left")
+        ttk.Button(btn_row, text="Export .txt", command=lambda: _export_gmail("txt")).pack(side="left", padx=(6, 0))
+        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
+
+        frame = tk.Frame(win)
+        frame.pack(fill="both", expand=True, padx=12, pady=(0, 4))
+
         tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
-        col_widths = {"subject_key": 340, "from": 200, "date": 160, "user": 200}
+        col_widths = {"subject": 340, "from": 200, "date": 160, "user": 200}
         for col in display_cols:
             width = col_widths.get(col.lower(), 180)
             tree.heading(col, text=col)
@@ -836,7 +936,6 @@ class GAMGui(tk.Tk):
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
 
-        ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
         self._theme_toplevel(win)
 
     # --- List tab confirm/run ---
