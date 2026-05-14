@@ -860,7 +860,8 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Messages — {len(rows)} result(s)")
-        win.minsize(600, 320)
+        win.geometry("860x600")
+        win.minsize(600, 400)
 
         ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
                   style="Hint.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
@@ -939,8 +940,6 @@ class GAMGui(tk.Tk):
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
 
-        win.update_idletasks()
-        win.geometry(f"860x{win.winfo_reqheight()}")
         self._theme_toplevel(win)
 
     # --- List tab confirm/run ---
@@ -1344,7 +1343,8 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Files — {len(rows)} result(s)")
-        win.minsize(600, 320)
+        win.geometry("900x600")
+        win.minsize(600, 400)
 
         ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
                   style="Hint.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
@@ -1428,8 +1428,6 @@ class GAMGui(tk.Tk):
         ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
         ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
         ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
-        win.update_idletasks()
-        win.geometry(f"900x{win.winfo_reqheight()}")
         self._theme_toplevel(win)
 
     # --- Drive delete ---
