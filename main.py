@@ -860,8 +860,7 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Messages — {len(rows)} result(s)")
-        win.geometry("860x560")
-        win.minsize(600, 250)
+        win.minsize(600, 320)
 
         ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
                   style="Hint.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
@@ -919,7 +918,8 @@ class GAMGui(tk.Tk):
         frame = tk.Frame(win)
         frame.pack(fill="both", expand=True, padx=12, pady=(0, 4))
 
-        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
+        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse",
+                            height=min(len(rows), 20))
         col_widths = {"subject": 340, "from": 200, "date": 160, "user": 200}
         for col in display_cols:
             width = col_widths.get(col.lower(), 180)
@@ -939,6 +939,8 @@ class GAMGui(tk.Tk):
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
 
+        win.update_idletasks()
+        win.geometry(f"860x{win.winfo_reqheight()}")
         self._theme_toplevel(win)
 
     # --- List tab confirm/run ---
@@ -1342,8 +1344,7 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Files — {len(rows)} result(s)")
-        win.geometry("900x560")
-        win.minsize(600, 250)
+        win.minsize(600, 320)
 
         ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
                   style="Hint.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
@@ -1369,7 +1370,8 @@ class GAMGui(tk.Tk):
         if not display_cols:
             display_cols = list(sample.keys())
 
-        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
+        tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse",
+                            height=min(len(rows), 20))
         col_widths = {"name": 240, "owneremail": 200, "mimetype": 160, "size": 70, "modifiedtime": 150, "id": 200}
         for col in display_cols:
             width = col_widths.get(col.lower(), 150)
@@ -1426,6 +1428,8 @@ class GAMGui(tk.Tk):
         ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
         ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
         ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
+        win.update_idletasks()
+        win.geometry(f"900x{win.winfo_reqheight()}")
         self._theme_toplevel(win)
 
     # --- Drive delete ---
