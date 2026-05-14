@@ -860,7 +860,7 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Messages — {len(rows)} result(s)")
-        win.geometry("860x400")
+        win.geometry("860x460")
         win.minsize(600, 250)
 
         ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
@@ -880,6 +880,9 @@ class GAMGui(tk.Tk):
         if not display_cols:
             display_cols = list(sample.keys())
 
+        _gmail_labels = {"user": "User Email", "date": "Date", "from": "From", "subject": "Subject"}
+        col_labels = [_gmail_labels.get(c.lower(), c) or c for c in display_cols]
+
         def _export_gmail(fmt):
             default = f"gmail_results.{fmt}"
             path = filedialog.asksaveasfilename(
@@ -893,16 +896,16 @@ class GAMGui(tk.Tk):
                 with open(path, "w", newline="", encoding="utf-8") as f:
                     if fmt == "csv":
                         writer = csv.writer(f)
-                        writer.writerow(display_cols)
+                        writer.writerow(col_labels)
                         for row in rows:
                             writer.writerow([row.get(c, "") for c in display_cols])
                     else:
-                        col_w = {c: max(len(c), max((len(str(row.get(c, ""))) for row in rows), default=0)) for c in display_cols}
-                        header = "  ".join(c.ljust(col_w[c]) for c in display_cols)
-                        sep = "  ".join("-" * col_w[c] for c in display_cols)
+                        col_w = [max(len(col_labels[i]), max((len(str(row.get(display_cols[i], ""))) for row in rows), default=0)) for i in range(len(display_cols))]
+                        header = "  ".join(col_labels[i].ljust(col_w[i]) for i in range(len(col_labels)))
+                        sep = "  ".join("-" * w for w in col_w)
                         f.write(f"Query: {query}\n{header}\n{sep}\n")
                         for row in rows:
-                            f.write("  ".join(str(row.get(c, "")).ljust(col_w[c]) for c in display_cols) + "\n")
+                            f.write("  ".join(str(row.get(display_cols[i], "")).ljust(col_w[i]) for i in range(len(display_cols))) + "\n")
                 messagebox.showinfo("Export", f"Saved {len(rows)} row(s) to:\n{path}", parent=win)
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
@@ -1339,7 +1342,7 @@ class GAMGui(tk.Tk):
 
         win = tk.Toplevel(self)
         win.title(f"Found Files — {len(rows)} result(s)")
-        win.geometry("900x380")
+        win.geometry("900x460")
         win.minsize(600, 250)
 
         ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
@@ -1385,6 +1388,12 @@ class GAMGui(tk.Tk):
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
 
+        _drive_labels = {
+            "name": "File Name", "id": "File ID", "mimetype": "MIME Type",
+            "size": "Size (bytes)", "modifiedtime": "Modified Time", "owneremail": "Owner Email",
+        }
+        col_labels = [_drive_labels.get(c.lower(), c) or c for c in display_cols]
+
         def _export(fmt):
             default = "drive_results.csv" if fmt == "csv" else "drive_results.txt"
             path = filedialog.asksaveasfilename(
@@ -1400,16 +1409,16 @@ class GAMGui(tk.Tk):
                 with open(path, "w", newline="", encoding="utf-8") as f:
                     if fmt == "csv":
                         writer = csv.writer(f)
-                        writer.writerow(display_cols)
+                        writer.writerow(col_labels)
                         for row in rows:
                             writer.writerow([row.get(c, "") for c in display_cols])
                     else:
-                        col_w = {c: max(len(c), max((len(str(row.get(c, ""))) for row in rows), default=0)) for c in display_cols}
-                        header = "  ".join(c.ljust(col_w[c]) for c in display_cols)
-                        sep = "  ".join("-" * col_w[c] for c in display_cols)
+                        col_w = [max(len(col_labels[i]), max((len(str(row.get(display_cols[i], ""))) for row in rows), default=0)) for i in range(len(display_cols))]
+                        header = "  ".join(col_labels[i].ljust(col_w[i]) for i in range(len(col_labels)))
+                        sep = "  ".join("-" * w for w in col_w)
                         f.write(f"Query: {query}\n{header}\n{sep}\n")
                         for row in rows:
-                            f.write("  ".join(str(row.get(c, "")).ljust(col_w[c]) for c in display_cols) + "\n")
+                            f.write("  ".join(str(row.get(display_cols[i], "")).ljust(col_w[i]) for i in range(len(display_cols))) + "\n")
                 messagebox.showinfo("Export", f"Saved {len(rows)} row(s) to:\n{path}", parent=win)
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
