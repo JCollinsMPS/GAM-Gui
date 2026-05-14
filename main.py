@@ -4,7 +4,7 @@ import os
 import re
 import sys
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, filedialog
 import subprocess
 import threading
 import shlex
@@ -1283,7 +1283,40 @@ class GAMGui(tk.Tk):
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
 
-        ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 10))
+        def _export(fmt):
+            default = "drive_results.csv" if fmt == "csv" else "drive_results.txt"
+            path = filedialog.asksaveasfilename(
+                parent=win,
+                title="Export Results",
+                initialfile=default,
+                defaultextension=f".{fmt}",
+                filetypes=[(f"{fmt.upper()} files", f"*.{fmt}"), ("All files", "*.*")],
+            )
+            if not path:
+                return
+            try:
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    if fmt == "csv":
+                        writer = csv.writer(f)
+                        writer.writerow(display_cols)
+                        for row in rows:
+                            writer.writerow([row.get(c, "") for c in display_cols])
+                    else:
+                        col_w = {c: max(len(c), max((len(str(row.get(c, ""))) for row in rows), default=0)) for c in display_cols}
+                        header = "  ".join(c.ljust(col_w[c]) for c in display_cols)
+                        sep = "  ".join("-" * col_w[c] for c in display_cols)
+                        f.write(f"Query: {query}\n{header}\n{sep}\n")
+                        for row in rows:
+                            f.write("  ".join(str(row.get(c, "")).ljust(col_w[c]) for c in display_cols) + "\n")
+                messagebox.showinfo("Export", f"Saved {len(rows)} row(s) to:\n{path}", parent=win)
+            except OSError as e:
+                messagebox.showerror("Export Failed", str(e), parent=win)
+
+        btn_row = tk.Frame(win)
+        btn_row.pack(fill="x", padx=12, pady=(0, 10))
+        ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
+        ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
+        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
         self._theme_toplevel(win)
 
     # --- Drive delete ---
