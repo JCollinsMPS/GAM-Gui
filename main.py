@@ -863,13 +863,7 @@ class GAMGui(tk.Tk):
         win.geometry("860x600")
         win.minsize(600, 400)
         win.columnconfigure(0, weight=1)
-        win.rowconfigure(1, weight=1)
-
-        # Row 0: info labels
-        ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
-                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(10, 2))
-        ttk.Label(win, text=f"{len(rows)} message(s) matched  •  max 50 shown",
-                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(28, 6))
+        win.rowconfigure(2, weight=1)
 
         # Detect available columns (GAM may capitalise differently)
         sample = rows[0]
@@ -913,9 +907,22 @@ class GAMGui(tk.Tk):
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
 
-        # Row 1: treeview (expands)
+        # Row 0: buttons
+        btn_row = tk.Frame(win)
+        btn_row.grid(row=0, column=0, sticky="ew", padx=12, pady=(10, 4))
+        ttk.Button(btn_row, text="Export .csv", command=lambda: _export_gmail("csv")).pack(side="left")
+        ttk.Button(btn_row, text="Export .txt", command=lambda: _export_gmail("txt")).pack(side="left", padx=(6, 0))
+        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
+
+        # Row 1: info labels
+        ttk.Label(win, text=f'Query: {query}', font=("Segoe UI", 9),
+                  style="Hint.TLabel").grid(row=1, column=0, sticky="w", padx=12, pady=(0, 2))
+        ttk.Label(win, text=f"{len(rows)} message(s) matched  •  max 50 shown",
+                  style="Hint.TLabel").grid(row=1, column=0, sticky="w", padx=12, pady=(16, 4))
+
+        # Row 2: treeview (expands)
         frame = tk.Frame(win)
-        frame.grid(row=1, column=0, sticky="nsew", padx=12, pady=4)
+        frame.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 10))
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
@@ -935,13 +942,6 @@ class GAMGui(tk.Tk):
 
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
-
-        # Row 2: buttons (always visible)
-        btn_row = tk.Frame(win)
-        btn_row.grid(row=2, column=0, sticky="ew", padx=12, pady=(4, 10))
-        ttk.Button(btn_row, text="Export .csv", command=lambda: _export_gmail("csv")).pack(side="left")
-        ttk.Button(btn_row, text="Export .txt", command=lambda: _export_gmail("txt")).pack(side="left", padx=(6, 0))
-        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
 
         self._theme_toplevel(win)
 
@@ -1349,13 +1349,7 @@ class GAMGui(tk.Tk):
         win.geometry("900x600")
         win.minsize(600, 400)
         win.columnconfigure(0, weight=1)
-        win.rowconfigure(1, weight=1)
-
-        # Row 0: info labels
-        ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
-                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(10, 2))
-        ttk.Label(win, text=f"{len(rows)} file(s) matched  •  max 100 shown",
-                  style="Hint.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(28, 6))
+        win.rowconfigure(2, weight=1)
 
         sample = rows[0]
         col_map = {k.lower(): k for k in sample.keys()}
@@ -1403,9 +1397,22 @@ class GAMGui(tk.Tk):
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
 
-        # Row 1: treeview (expands)
+        # Row 0: buttons
+        btn_row = tk.Frame(win)
+        btn_row.grid(row=0, column=0, sticky="ew", padx=12, pady=(10, 4))
+        ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
+        ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
+        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
+
+        # Row 1: info labels
+        ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
+                  style="Hint.TLabel").grid(row=1, column=0, sticky="w", padx=12, pady=(0, 2))
+        ttk.Label(win, text=f"{len(rows)} file(s) matched  •  max 100 shown",
+                  style="Hint.TLabel").grid(row=1, column=0, sticky="w", padx=12, pady=(16, 4))
+
+        # Row 2: treeview (expands)
         frame = tk.Frame(win)
-        frame.grid(row=1, column=0, sticky="nsew", padx=12, pady=4)
+        frame.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 10))
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
@@ -1426,12 +1433,6 @@ class GAMGui(tk.Tk):
         for row in rows:
             tree.insert("", "end", values=[row.get(c, "") for c in display_cols])
 
-        # Row 2: buttons (always visible)
-        btn_row = tk.Frame(win)
-        btn_row.grid(row=2, column=0, sticky="ew", padx=12, pady=(4, 10))
-        ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
-        ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
-        ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
         self._theme_toplevel(win)
 
     # --- Drive delete ---
