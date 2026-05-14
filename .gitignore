@@ -10,3 +10,6 @@ __pycache__/
 
 # Local environment
 .env
+
+# Claude Code memory
+.claude/
