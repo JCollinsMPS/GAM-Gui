@@ -67,6 +67,40 @@ class GAMGui(tk.Tk):
         y = self.winfo_y() + (self.winfo_height() - dlg.winfo_height()) // 2
         dlg.geometry(f"+{x}+{y}")
 
+    def _show_about(self):
+        dlg = tk.Toplevel(self)
+        dlg.title("About GAM GUI")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+
+        tk.Frame(dlg, bg="#8b0000", height=6).pack(fill="x")
+
+        body = tk.Frame(dlg, padx=32, pady=24)
+        body.pack()
+
+        tk.Label(body, text="GAM GUI", font=("Segoe UI", 16, "bold")).pack()
+        tk.Label(body, text=f"Version {VERSION}", font=("Segoe UI", 10)).pack(pady=(2, 16))
+
+        tk.Label(body, text="Developed for Marshall Public Schools",
+                 font=("Segoe UI", 9)).pack()
+
+        tk.Frame(body, height=1, bg="#cccccc").pack(fill="x", pady=14)
+
+        gh_link = tk.Label(body, text="GitHub Repository →",
+                           font=("Segoe UI", 10, "underline"), fg="#8b0000", cursor="hand2")
+        gh_link.pack()
+        gh_link.bind("<Button-1>", lambda _: webbrowser.open("https://github.com/JCollinsMPS/GAM-Gui"))
+
+        tk.Label(body, text="jcollins@marshallpublicschools.org",
+                 font=("Segoe UI", 9)).pack(pady=(8, 0))
+
+        ttk.Button(dlg, text="Close", command=dlg.destroy).pack(pady=(0, 16))
+
+        dlg.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - dlg.winfo_width()) // 2
+        y = self.winfo_y() + (self.winfo_height() - dlg.winfo_height()) // 2
+        dlg.geometry(f"+{x}+{y}")
+
     def _check_gam(self):
         if not shutil.which("gam"):
             self.log(
@@ -98,6 +132,14 @@ class GAMGui(tk.Tk):
             command=self._toggle_theme,
         )
         self._theme_btn.pack(side="right", padx=12)
+
+        tk.Button(
+            header, text="About",
+            bg="#6b0000", fg="white", activebackground="#560000", activeforeground="white",
+            relief="flat", bd=0, padx=10, pady=4, cursor="hand2",
+            font=("Segoe UI", 9),
+            command=self._show_about,
+        ).pack(side="right")
 
         body = tk.Frame(self, bg="#f5f5f5")
         body.pack(fill="both", expand=True, padx=16, pady=14)
