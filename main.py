@@ -1248,8 +1248,11 @@ class GAMGui(tk.Tk):
         ttk.Label(win, text=f"{len(rows)} file(s) matched  •  max 100 shown",
                   style="Hint.TLabel").pack(anchor="w", padx=12, pady=(0, 6))
 
+        btn_row = tk.Frame(win)
+        btn_row.pack(fill="x", padx=12, pady=(0, 10), side="bottom")
+
         frame = tk.Frame(win)
-        frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        frame.pack(fill="both", expand=True, padx=12, pady=(0, 4))
 
         sample = rows[0]
         col_map = {k.lower(): k for k in sample.keys()}
@@ -1312,8 +1315,6 @@ class GAMGui(tk.Tk):
             except OSError as e:
                 messagebox.showerror("Export Failed", str(e), parent=win)
 
-        btn_row = tk.Frame(win)
-        btn_row.pack(fill="x", padx=12, pady=(0, 10))
         ttk.Button(btn_row, text="Export .csv", command=lambda: _export("csv")).pack(side="left")
         ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
         ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
