@@ -81,7 +81,7 @@ class GAMGui(tk.Tk):
         tk.Label(body, text="GAM GUI", font=("Segoe UI", 16, "bold")).pack()
         tk.Label(body, text=f"Version {VERSION}", font=("Segoe UI", 10)).pack(pady=(2, 16))
 
-        tk.Label(body, text="Developed for Marshall Public Schools",
+        tk.Label(body, text="Developed for K12 Education",
                  font=("Segoe UI", 9)).pack()
 
         tk.Frame(body, height=1, bg="#cccccc").pack(fill="x", pady=14)
