@@ -390,6 +390,9 @@ class GAMGui(tk.Tk):
         frame = ttk.LabelFrame(parent, text="Output Log", padding=8)
         frame.pack(fill="both", expand=True, pady=(12, 0))
 
+        log_btn_row = tk.Frame(frame)
+        log_btn_row.pack(side="top", anchor="e", pady=(0, 6))
+
         self.log_area = scrolledtext.ScrolledText(
             frame, height=10, font=("Courier New", 9), state="disabled",
             bg="#1e1e1e", fg="#d4d4d4", insertbackground="white", relief="flat",
@@ -402,9 +405,6 @@ class GAMGui(tk.Tk):
         self.log_area.tag_config("info", foreground="#9cdcfe")
         self.log_area.tag_config("cmd", foreground="#c586c0")
         self.log_area.tag_config("preview", foreground="#ce9178")
-
-        log_btn_row = tk.Frame(frame)
-        log_btn_row.pack(anchor="e", pady=(6, 0))
 
         def _export_log(fmt):
             content = self.log_area.get("1.0", "end").strip()
