@@ -11,7 +11,7 @@ import shlex
 import shutil
 import webbrowser
 
-VERSION = "26.5.7.03"
+VERSION = "26.5.7.04"
 
 
 class GAMGui(tk.Tk):
@@ -408,34 +408,56 @@ class GAMGui(tk.Tk):
     def _build_drive_tab(self, parent):
         parent.columnconfigure(1, weight=1)
 
-        ttk.Label(parent, text="User Email:").grid(row=0, column=0, sticky="w", pady=(0, 4))
-        email_var = tk.StringVar()
-        ttk.Entry(parent, textvariable=email_var, font=("Segoe UI", 10)).grid(
-            row=0, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4)
-        )
-        ttk.Label(parent, text="User who owns or has access to the target files",
-                  style="Hint.TLabel").grid(
-            row=1, column=1, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 10)
-        )
+        # Row 0: Scope selector
+        scope_var = tk.StringVar(value="user")
+        scope_frame = tk.Frame(parent)
+        scope_frame.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        ttk.Label(scope_frame, text="Scope:").pack(side="left", padx=(0, 12))
+        ttk.Radiobutton(scope_frame, text="Single User", variable=scope_var, value="user").pack(side="left", padx=(0, 10))
+        ttk.Radiobutton(scope_frame, text="Organizational Unit", variable=scope_var, value="ou").pack(side="left")
 
+        # Row 1: User email (single-user mode) — shown/hidden by scope
+        email_label = ttk.Label(parent, text="User Email:")
+        email_var = tk.StringVar()
+        email_entry = ttk.Entry(parent, textvariable=email_var, font=("Segoe UI", 10))
+        email_hint = ttk.Label(parent, text="User who owns or has access to the target files",
+                               style="Hint.TLabel")
+
+        # Row 1: OU path (OU mode) — shown/hidden by scope
+        ou_label = ttk.Label(parent, text="OU Path:")
+        ou_var = tk.StringVar()
+        ou_frame = tk.Frame(parent)
+        ou_entry = ttk.Entry(ou_frame, textvariable=ou_var, font=("Segoe UI", 10))
+        ou_entry.pack(side="left", fill="x", expand=True)
+        ou_browse_btn = ttk.Button(ou_frame, text="Browse OUs…",
+                                   command=lambda: self._browse_drive_ous(refs))
+        ou_browse_btn.pack(side="left", padx=(6, 0))
+        ou_hint = ttk.Label(parent, text="Full OU path, e.g.  /Students/Grade 9  •  use Browse to pick from domain",
+                            style="Hint.TLabel")
+
+        # Row 3: Drive type
         drive_type_var = tk.StringVar(value="mydrive")
         dt_frame = tk.Frame(parent)
-        dt_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        dt_frame.grid(row=3, column=0, columnspan=3, sticky="w", pady=(0, 6))
         ttk.Label(dt_frame, text="Drive:").pack(side="left", padx=(0, 12))
         ttk.Radiobutton(dt_frame, text="My Drive", variable=drive_type_var, value="mydrive").pack(side="left", padx=(0, 10))
         ttk.Radiobutton(dt_frame, text="Shared Drive", variable=drive_type_var, value="shared").pack(side="left")
 
+        # Row 4: Shared Drive ID (conditional)
         shared_label = ttk.Label(parent, text="Shared Drive ID:")
         shared_var = tk.StringVar()
         shared_entry = ttk.Entry(parent, textvariable=shared_var, font=("Segoe UI", 10))
 
+        # Row 5: Method selector
         method_var = tk.StringVar(value="fileid")
         m_frame = tk.Frame(parent)
-        m_frame.grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        m_frame.grid(row=5, column=0, columnspan=3, sticky="w", pady=(0, 6))
         ttk.Label(m_frame, text="Find by:").pack(side="left", padx=(0, 12))
-        ttk.Radiobutton(m_frame, text="File ID(s)", variable=method_var, value="fileid").pack(side="left", padx=(0, 10))
+        fileid_radio = ttk.Radiobutton(m_frame, text="File ID(s)", variable=method_var, value="fileid")
+        fileid_radio.pack(side="left", padx=(0, 10))
         ttk.Radiobutton(m_frame, text="File Name", variable=method_var, value="name").pack(side="left")
 
+        # Rows 6/7: File ID input
         fileid_label = ttk.Label(parent, text="File ID(s):")
         fileid_hint = ttk.Label(parent, text="One per line  •  copy the ID from the file's Drive share URL",
                                 style="Hint.TLabel")
@@ -449,6 +471,7 @@ class GAMGui(tk.Tk):
         fileid_text.grid(row=0, column=0, sticky="nsew")
         _fsb.grid(row=0, column=1, sticky="ns")
 
+        # Rows 6/7/8: File Name input
         name_label = ttk.Label(parent, text="File Name:")
         name_var = tk.StringVar()
         name_entry = ttk.Entry(parent, textvariable=name_var, font=("Segoe UI", 10))
@@ -457,16 +480,18 @@ class GAMGui(tk.Tk):
         drive_q_label = ttk.Label(parent, text="Drive Query:")
         drive_q_var = tk.StringVar()
         drive_q_preview = ttk.Entry(parent, textvariable=drive_q_var,
-                                     font=("Courier New", 9), state="readonly")
+                                    font=("Courier New", 9), state="readonly")
 
+        # Row 9: Purge
         purge_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             parent, text="Permanently delete (skip trash — cannot be recovered)",
             variable=purge_var,
-        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
+        # Row 10: Buttons
         btn_row = tk.Frame(parent)
-        btn_row.grid(row=9, column=0, columnspan=3, sticky="e", pady=(10, 0))
+        btn_row.grid(row=10, column=0, columnspan=3, sticky="e", pady=(10, 0))
         delete_btn = ttk.Button(btn_row, text="Delete Files",
                                 command=lambda: self._confirm_delete_drive())
         delete_btn.pack(side="right")
@@ -476,14 +501,19 @@ class GAMGui(tk.Tk):
         ttk.Button(
             btn_row, text="Clear Fields",
             command=lambda: [
-                email_var.set(""), shared_var.set(""),
+                email_var.set(""), shared_var.set(""), ou_var.set(""),
                 fileid_text.delete("1.0", "end"),
                 name_var.set(""),
             ],
         ).pack(side="right", padx=(0, 6))
 
         refs = {
-            "email_var": email_var,
+            "scope_var": scope_var,
+            "email_label": email_label, "email_var": email_var,
+            "email_entry": email_entry, "email_hint": email_hint,
+            "ou_label": ou_label, "ou_var": ou_var,
+            "ou_frame": ou_frame, "ou_hint": ou_hint,
+            "fileid_radio": fileid_radio,
             "drive_type_var": drive_type_var,
             "shared_label": shared_label, "shared_var": shared_var, "shared_entry": shared_entry,
             "method_var": method_var,
@@ -496,10 +526,12 @@ class GAMGui(tk.Tk):
             "delete_btn": delete_btn, "find_btn": find_btn,
         }
 
+        scope_var.trace_add("write", lambda *_: self._on_drive_scope_change(refs))
         drive_type_var.trace_add("write", lambda *_: self._on_drive_type_change(refs))
         method_var.trace_add("write", lambda *_: self._on_drive_method_change(refs))
         name_var.trace_add("write", lambda *_: self._update_drive_query(refs))
 
+        self._on_drive_scope_change(refs)
         self._on_drive_type_change(refs)
         self._on_drive_method_change(refs)
 
@@ -916,27 +948,46 @@ class GAMGui(tk.Tk):
 
     # --- Drive tab helpers ---
 
+    def _on_drive_scope_change(self, refs):
+        is_ou = refs["scope_var"].get() == "ou"
+        for w in ("email_label", "email_entry", "email_hint"):
+            refs[w].grid_remove()
+        for w in ("ou_label", "ou_frame", "ou_hint"):
+            refs[w].grid_remove()
+        if is_ou:
+            refs["ou_label"].grid(row=1, column=0, sticky="w", pady=(0, 4))
+            refs["ou_frame"].grid(row=1, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
+            refs["ou_hint"].grid(row=2, column=1, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 10))
+            refs["fileid_radio"].config(state="disabled")
+            if refs["method_var"].get() == "fileid":
+                refs["method_var"].set("name")
+        else:
+            refs["email_label"].grid(row=1, column=0, sticky="w", pady=(0, 4))
+            refs["email_entry"].grid(row=1, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
+            refs["email_hint"].grid(row=2, column=1, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 10))
+            refs["fileid_radio"].config(state="normal")
+
     def _on_drive_type_change(self, refs):
         refs["shared_label"].grid_remove()
         refs["shared_entry"].grid_remove()
         if refs["drive_type_var"].get() == "shared":
-            refs["shared_label"].grid(row=3, column=0, sticky="w", pady=(0, 8))
-            refs["shared_entry"].grid(row=3, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 8))
+            refs["shared_label"].grid(row=4, column=0, sticky="w", pady=(0, 8))
+            refs["shared_entry"].grid(row=4, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 8))
 
     def _on_drive_method_change(self, refs):
         for k in ("fileid_label", "fileid_hint", "fileid_outer",
                   "name_label", "name_entry", "name_hint", "drive_q_label", "drive_q_preview"):
             refs[k].grid_remove()
         if refs["method_var"].get() == "fileid":
-            refs["fileid_label"].grid(row=5, column=0, sticky="nw", pady=(0, 4))
-            refs["fileid_hint"].grid(row=6, column=0, sticky="nw", pady=(0, 4))
-            refs["fileid_outer"].grid(row=5, column=1, rowspan=2, sticky="nsew", padx=(10, 0))
+            refs["fileid_label"].grid(row=6, column=0, sticky="nw", pady=(0, 4))
+            refs["fileid_hint"].grid(row=7, column=0, sticky="nw", pady=(0, 4))
+            refs["fileid_outer"].grid(row=6, column=1, rowspan=2, sticky="nsew", padx=(10, 0))
         else:
-            refs["name_label"].grid(row=5, column=0, sticky="w", pady=(0, 4))
-            refs["name_entry"].grid(row=5, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
-            refs["name_hint"].grid(row=6, column=0, columnspan=3, sticky="w", pady=(0, 6))
-            refs["drive_q_label"].grid(row=7, column=0, sticky="w", pady=(0, 4))
-            refs["drive_q_preview"].grid(row=7, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
+            refs["name_label"].grid(row=6, column=0, sticky="w", pady=(0, 4))
+            refs["name_entry"].grid(row=6, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
+            refs["name_hint"].grid(row=7, column=0, columnspan=3, sticky="w", pady=(0, 6))
+            refs["drive_q_label"].grid(row=8, column=0, sticky="w", pady=(0, 4))
+            refs["drive_q_preview"].grid(row=8, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
 
     def _update_drive_query(self, refs):
         name = refs["name_var"].get().strip()
@@ -950,10 +1001,7 @@ class GAMGui(tk.Tk):
 
     def _find_drive_files(self):
         refs = self.drive_tab
-        email = refs["email_var"].get().strip()
-        if not email:
-            messagebox.showwarning("Missing Input", "Please enter a user email address.")
-            return
+        scope = refs["scope_var"].get()
         method = refs["method_var"].get()
         drive_type = refs["drive_type_var"].get()
         shared_id = refs["shared_var"].get().strip()
@@ -962,28 +1010,51 @@ class GAMGui(tk.Tk):
             return
 
         refs["find_btn"].config(state="disabled")
-        if method == "fileid":
-            file_ids = [l.strip() for l in refs["fileid_text"].get("1.0", "end").splitlines() if l.strip()]
-            if not file_ids:
-                messagebox.showwarning("Missing Input", "Please enter at least one File ID.")
+
+        if scope == "ou":
+            ou_path = refs["ou_var"].get().strip()
+            if not ou_path:
+                messagebox.showwarning("Missing Input", "Please enter an OU path or use Browse to select one.")
                 refs["find_btn"].config(state="normal")
                 return
-            threading.Thread(
-                target=self._find_drive_by_ids_worker,
-                args=(email, file_ids, refs),
-                daemon=True,
-            ).start()
-        else:
             name = refs["name_var"].get().strip()
             if not name:
                 messagebox.showwarning("Missing Input", "Please enter a file name to search for.")
                 refs["find_btn"].config(state="normal")
                 return
             threading.Thread(
-                target=self._find_drive_by_name_worker,
-                args=(email, drive_type, shared_id, name, refs),
+                target=self._find_drive_by_name_ou_worker,
+                args=(ou_path, drive_type, shared_id, name, refs),
                 daemon=True,
             ).start()
+        else:
+            email = refs["email_var"].get().strip()
+            if not email:
+                messagebox.showwarning("Missing Input", "Please enter a user email address.")
+                refs["find_btn"].config(state="normal")
+                return
+            if method == "fileid":
+                file_ids = [l.strip() for l in refs["fileid_text"].get("1.0", "end").splitlines() if l.strip()]
+                if not file_ids:
+                    messagebox.showwarning("Missing Input", "Please enter at least one File ID.")
+                    refs["find_btn"].config(state="normal")
+                    return
+                threading.Thread(
+                    target=self._find_drive_by_ids_worker,
+                    args=(email, file_ids, refs),
+                    daemon=True,
+                ).start()
+            else:
+                name = refs["name_var"].get().strip()
+                if not name:
+                    messagebox.showwarning("Missing Input", "Please enter a file name to search for.")
+                    refs["find_btn"].config(state="normal")
+                    return
+                threading.Thread(
+                    target=self._find_drive_by_name_worker,
+                    args=(email, drive_type, shared_id, name, refs),
+                    daemon=True,
+                ).start()
 
     def _find_drive_by_ids_worker(self, email, file_ids, refs):
         self.log(f"[FIND] Checking {len(file_ids)} file ID(s) for {email}", "preview")
@@ -1039,6 +1110,128 @@ class GAMGui(tk.Tk):
             self.log("ERROR: 'gam' not found.", "error")
             self.after(0, lambda: refs["find_btn"].config(state="normal"))
 
+    def _find_drive_by_name_ou_worker(self, ou_path, drive_type, shared_id, name, refs):
+        clean = name.replace("'", "\\'")
+        query = f"name contains '{clean}'"
+        cmd = ["gam", "ou_and_children", ou_path, "print", "filelist"]
+        if drive_type == "shared" and shared_id:
+            cmd += ["teamdriveid", shared_id]
+        cmd += ["query", query, "fields", "id,name,mimeType,size,modifiedTime,ownerEmail", "maxfiles", "500"]
+
+        self.log(f"[FIND] OU: {ou_path}  •  {' '.join(cmd)}", "cmd")
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, creationflags=subprocess.CREATE_NO_WINDOW)
+            if result.stderr.strip():
+                self.log("  " + result.stderr.strip(), "warning")
+            stdout = result.stdout.strip()
+            if not stdout:
+                self.log("  No files found.", "warning")
+                self.after(0, lambda: refs["find_btn"].config(state="normal"))
+                return
+            rows = list(csv.DictReader(io.StringIO(stdout)))
+            if not rows:
+                self.log("  No files matched the search.", "warning")
+                self.after(0, lambda: refs["find_btn"].config(state="normal"))
+                return
+            col_map = {k.lower(): k for k in rows[0].keys()}
+            name_key = col_map.get("name", "name")
+            id_key = col_map.get("id", "id")
+            owner_key = col_map.get("owneremail", "")
+            self.log(f"  Found {len(rows)} file(s) across OU {ou_path}:", "preview")
+            for r in rows:
+                owner = f"  owner: {r.get(owner_key)}" if owner_key else ""
+                self.log(f"    {r.get(name_key, '(unknown)')}  ({r.get(id_key, '')}){owner}", "preview")
+            self.after(0, lambda: self._show_drive_find_results(rows, query, refs))
+        except subprocess.TimeoutExpired:
+            self.log("  TIMEOUT during Find Files (OU scans may take longer for large OUs).", "error")
+            self.after(0, lambda: refs["find_btn"].config(state="normal"))
+        except FileNotFoundError:
+            self.log("ERROR: 'gam' not found.", "error")
+            self.after(0, lambda: refs["find_btn"].config(state="normal"))
+
+    def _browse_drive_ous(self, refs):
+        def _worker():
+            try:
+                cmd = ["gam", "print", "orgs", "fields", "orgUnitPath,name"]
+                self.log("[OU] Fetching organizational units from domain…", "preview")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+                if result.stderr.strip():
+                    self.log("  " + result.stderr.strip(), "warning")
+                stdout = result.stdout.strip()
+                if not stdout:
+                    self.after(0, lambda: messagebox.showwarning("Browse OUs", "No organizational units returned from GAM."))
+                    return
+                rows = list(csv.DictReader(io.StringIO(stdout)))
+                if not rows:
+                    self.after(0, lambda: messagebox.showwarning("Browse OUs", "No organizational units found."))
+                    return
+                self.after(0, lambda: self._show_ou_picker(rows, refs))
+            except subprocess.TimeoutExpired:
+                self.log("  TIMEOUT while fetching OUs.", "error")
+                self.after(0, lambda: messagebox.showerror("Browse OUs", "Timeout while fetching organizational units."))
+            except FileNotFoundError:
+                self.log("ERROR: 'gam' not found.", "error")
+                self.after(0, lambda: messagebox.showerror("Browse OUs", "'gam' not found. Is GAM installed and in your PATH?"))
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_ou_picker(self, rows, refs):
+        win = tk.Toplevel(self)
+        win.title("Select Organizational Unit")
+        win.geometry("520x420")
+        win.minsize(380, 300)
+        win.transient(self)
+        win.grab_set()
+
+        ttk.Label(win, text="Select an OU (type to filter):").pack(anchor="w", padx=12, pady=(10, 4))
+        filter_var = tk.StringVar()
+        filter_entry = ttk.Entry(win, textvariable=filter_var, font=("Segoe UI", 10))
+        filter_entry.pack(fill="x", padx=12, pady=(0, 6))
+
+        frame = tk.Frame(win)
+        frame.pack(fill="both", expand=True, padx=12, pady=(0, 6))
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+
+        col_map = {k.lower(): k for k in rows[0].keys()}
+        path_key = col_map.get("orgunitpath", "orgUnitPath")
+
+        all_paths = sorted(set(r.get(path_key, "").strip() for r in rows if r.get(path_key, "").strip()))
+
+        listbox = tk.Listbox(frame, font=("Segoe UI", 10), selectmode="single", activestyle="none")
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=listbox.yview)
+        listbox.configure(yscrollcommand=vsb.set)
+        listbox.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+
+        def _populate(paths):
+            listbox.delete(0, "end")
+            for p in paths:
+                listbox.insert("end", p)
+
+        _populate(all_paths)
+
+        def _filter(*_):
+            term = filter_var.get().lower()
+            _populate([p for p in all_paths if term in p.lower()])
+
+        filter_var.trace_add("write", _filter)
+
+        def _select():
+            sel = listbox.curselection()
+            if sel:
+                refs["ou_var"].set(listbox.get(sel[0]))
+            win.destroy()
+
+        listbox.bind("<Double-Button-1>", lambda _: _select())
+
+        btn_row = tk.Frame(win)
+        btn_row.pack(fill="x", padx=12, pady=(0, 10))
+        ttk.Button(btn_row, text="Select", command=_select).pack(side="right")
+        ttk.Button(btn_row, text="Cancel", command=win.destroy).pack(side="right", padx=(0, 6))
+
+        filter_entry.focus_set()
+        self._theme_toplevel(win)
+
     def _show_drive_find_results(self, rows, query, refs):
         refs["find_btn"].config(state="normal")
         if not rows:
@@ -1065,13 +1258,14 @@ class GAMGui(tk.Tk):
         mime_key = col_map.get("mimetype", "")
         size_key = col_map.get("size", "")
         mod_key = col_map.get("modifiedtime", "")
+        owner_key = col_map.get("owneremail", "")
 
-        display_cols = [c for c in (name_key, mime_key, size_key, mod_key, id_key) if c]
+        display_cols = [c for c in (name_key, owner_key, mime_key, size_key, mod_key, id_key) if c]
         if not display_cols:
             display_cols = list(sample.keys())
 
         tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
-        col_widths = {"name": 280, "mimetype": 180, "size": 70, "modifiedtime": 160, "id": 220}
+        col_widths = {"name": 240, "owneremail": 200, "mimetype": 160, "size": 70, "modifiedtime": 150, "id": 200}
         for col in display_cols:
             width = col_widths.get(col.lower(), 150)
             tree.heading(col, text=col)
@@ -1096,10 +1290,7 @@ class GAMGui(tk.Tk):
 
     def _confirm_delete_drive(self):
         refs = self.drive_tab
-        email = refs["email_var"].get().strip()
-        if not email:
-            messagebox.showwarning("Missing Input", "Please enter a user email address.")
-            return
+        scope = refs["scope_var"].get()
         method = refs["method_var"].get()
         drive_type = refs["drive_type_var"].get()
         shared_id = refs["shared_var"].get().strip()
@@ -1112,7 +1303,30 @@ class GAMGui(tk.Tk):
         drive_label = f"Shared Drive ({shared_id})" if drive_type == "shared" else "My Drive"
         action = "Permanently delete" if purge else "Move to trash"
 
-        if method == "fileid":
+        if scope == "ou":
+            ou_path = refs["ou_var"].get().strip()
+            if not ou_path:
+                messagebox.showwarning("Missing Input", "Please enter an OU path or use Browse to select one.")
+                return
+            name = refs["name_var"].get().strip()
+            if not name:
+                messagebox.showwarning("Missing Input", "Please enter a file name to search for.")
+                return
+            action_lower = action.lower()
+            if messagebox.askyesno(
+                "Confirm Delete",
+                f"Find and {action_lower} all files matching:\n\n"
+                f"    name contains '{name}'\n\n"
+                f"across all users in OU:  {ou_path}\n"
+                f"Drive:  {drive_label}\n\n"
+                "This action cannot be undone. Continue?",
+            ):
+                self._run_delete_drive(refs, "name", "ou", ou_path, drive_type, shared_id, [name], purge)
+        elif method == "fileid":
+            email = refs["email_var"].get().strip()
+            if not email:
+                messagebox.showwarning("Missing Input", "Please enter a user email address.")
+                return
             file_ids = [l.strip() for l in refs["fileid_text"].get("1.0", "end").splitlines() if l.strip()]
             if not file_ids:
                 messagebox.showwarning("Missing Input", "Please enter at least one File ID.")
@@ -1126,8 +1340,12 @@ class GAMGui(tk.Tk):
                 f"{action} {len(file_ids)} {plural} from {email} / {drive_label}:\n\n"
                 f"{preview}\n\nThis action cannot be undone. Continue?",
             ):
-                self._run_delete_drive(refs, "fileid", email, drive_type, shared_id, file_ids, purge)
+                self._run_delete_drive(refs, "fileid", "user", email, drive_type, shared_id, file_ids, purge)
         else:
+            email = refs["email_var"].get().strip()
+            if not email:
+                messagebox.showwarning("Missing Input", "Please enter a user email address.")
+                return
             name = refs["name_var"].get().strip()
             if not name:
                 messagebox.showwarning("Missing Input", "Please enter a file name to search for.")
@@ -1140,25 +1358,26 @@ class GAMGui(tk.Tk):
                 f"in {email} / {drive_label}\n\n"
                 "This action cannot be undone. Continue?",
             ):
-                self._run_delete_drive(refs, "name", email, drive_type, shared_id, [name], purge)
+                self._run_delete_drive(refs, "name", "user", email, drive_type, shared_id, [name], purge)
 
-    def _run_delete_drive(self, refs, method, email, drive_type, shared_id, values, purge):
+    def _run_delete_drive(self, refs, method, scope, target, drive_type, shared_id, values, purge):
         refs["delete_btn"].config(state="disabled")
         refs["find_btn"].config(state="disabled")
         threading.Thread(
             target=self._delete_drive_worker,
-            args=(refs, method, email, drive_type, shared_id, values, purge),
+            args=(refs, method, scope, target, drive_type, shared_id, values, purge),
             daemon=True,
         ).start()
 
-    def _delete_drive_worker(self, refs, method, email, drive_type, shared_id, values, purge):
+    def _delete_drive_worker(self, refs, method, scope, target, drive_type, shared_id, values, purge):
         action = "purge" if purge else "delete"
-        self.log(f"[DELETE] Drive files  •  user: {email}  •  action: {action}", "info")
+        target_label = f"OU: {target}" if scope == "ou" else f"user: {target}"
+        self.log(f"[DELETE] Drive files  •  {target_label}  •  action: {action}", "info")
         success = failed = 0
 
-        def _do_delete(fid, label):
+        def _do_delete(owner_email, fid, label):
             nonlocal success, failed
-            cmd = ["gam", "user", email, action, "drivefile", fid]
+            cmd = ["gam", "user", owner_email, action, "drivefile", fid]
             self.log(">> " + " ".join(cmd), "cmd")
             try:
                 r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -1176,19 +1395,29 @@ class GAMGui(tk.Tk):
 
         try:
             if method == "fileid":
+                # Single-user file-ID mode: target is the owner's email
                 for fid in values:
-                    _do_delete(fid, fid)
+                    _do_delete(target, fid, fid)
             else:
                 name = values[0]
                 clean = name.replace("'", "\\'")
                 query = f"name contains '{clean}'"
-                list_cmd = ["gam", "user", email, "print", "filelist"]
-                if drive_type == "shared" and shared_id:
-                    list_cmd += ["teamdriveid", shared_id]
-                list_cmd += ["query", query, "fields", "id,name", "maxfiles", "1000"]
+
+                if scope == "ou":
+                    list_cmd = ["gam", "ou_and_children", target, "print", "filelist"]
+                    if drive_type == "shared" and shared_id:
+                        list_cmd += ["teamdriveid", shared_id]
+                    list_cmd += ["query", query, "fields", "id,name,ownerEmail", "maxfiles", "1000"]
+                    list_timeout = 120
+                else:
+                    list_cmd = ["gam", "user", target, "print", "filelist"]
+                    if drive_type == "shared" and shared_id:
+                        list_cmd += ["teamdriveid", shared_id]
+                    list_cmd += ["query", query, "fields", "id,name", "maxfiles", "1000"]
+                    list_timeout = 60
 
                 self.log(">> " + " ".join(list_cmd), "cmd")
-                result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW)
+                result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=list_timeout, creationflags=subprocess.CREATE_NO_WINDOW)
                 if result.stderr.strip():
                     self.log("  " + result.stderr.strip(), "warning")
 
@@ -1204,12 +1433,15 @@ class GAMGui(tk.Tk):
                 col_map = {k.lower(): k for k in rows[0].keys()}
                 id_key = col_map.get("id", "id")
                 name_key = col_map.get("name", "name")
+                owner_key = col_map.get("owneremail", "")
                 self.log(f"  Found {len(rows)} file(s) — deleting...", "preview")
                 for row in rows:
                     fid = row.get(id_key, "")
                     fname = row.get(name_key, "(unknown)")
-                    if fid:
-                        _do_delete(fid, f"{fname} ({fid})")
+                    # For OU scope use the file's ownerEmail; for user scope use target
+                    owner = row.get(owner_key, target) if (scope == "ou" and owner_key) else target
+                    if fid and owner:
+                        _do_delete(owner, fid, f"{fname} ({fid})")
 
         except subprocess.TimeoutExpired:
             self.log("  TIMEOUT during file listing.", "error")
