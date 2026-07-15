@@ -6,12 +6,13 @@ import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, filedialog
 import subprocess
+import tempfile
 import threading
 import shlex
 import shutil
 import webbrowser
 
-VERSION = "26.5.14.01"
+VERSION = "26.7.15.02"
 
 
 class GAMGui(tk.Tk):
@@ -1258,40 +1259,64 @@ class GAMGui(tk.Tk):
             self.log("ERROR: 'gam' not found.", "error")
             self.after(0, lambda: refs["find_btn"].config(state="normal"))
 
+    def _log_stderr_capped(self, stderr, limit=15):
+        lines = stderr.strip().splitlines()
+        if len(lines) > limit:
+            self.log("  " + "\n  ".join(lines[:limit]), "warning")
+            self.log(f"  ... ({len(lines) - limit} more line(s) omitted)", "warning")
+        else:
+            self.log("  " + "\n  ".join(lines), "warning")
+
+    def _run_ou_filelist_multiprocess(self, core_args, timeout, threads=20):
+        # ou_and_children/all-users scopes run print filelist once per user, sequentially,
+        # by default — a district-sized OU (10k+ users) blows past any sane timeout that
+        # way. GAM's own multiprocess batching fans that out across worker processes, so
+        # this always wraps the command in it rather than calling gam directly.
+        fd, tmp_path = tempfile.mkstemp(suffix=".csv")
+        os.close(fd)
+        cmd = [
+            "gam", "config", "auto_batch_min", "1", "num_threads", str(threads),
+            "redirect", "csv", tmp_path, "multiprocess",
+        ] + core_args
+        try:
+            self.log(">> " + " ".join(cmd), "cmd")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, creationflags=subprocess.CREATE_NO_WINDOW)
+            if result.stderr.strip():
+                self._log_stderr_capped(result.stderr)
+            with open(tmp_path, "r", newline="", encoding="utf-8") as f:
+                return list(csv.DictReader(f))
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
     def _find_drive_by_name_ou_worker(self, ou_path, drive_type, shared_id, name, refs):
         clean = name.replace("'", "\\'")
         query = f"name contains '{clean}'"
-        cmd = ["gam", "ou_and_children", ou_path, "print", "filelist"]
+        core = ["ou_and_children", ou_path, "print", "filelist"]
         if drive_type == "shared" and shared_id:
-            cmd += ["teamdriveid", shared_id]
-        cmd += ["query", query, "fields", "id,name,mimeType,size,modifiedTime,ownerEmail", "maxfiles", "500"]
+            core += ["teamdriveid", shared_id]
+        core += ["query", query, "fields", "id,name,mimeType,size,modifiedTime", "maxfiles", "500"]
 
-        self.log(f"[FIND] OU: {ou_path}  •  {' '.join(cmd)}", "cmd")
+        self.log(f"[FIND] OU: {ou_path}  •  scanning all users (large OUs can take several minutes)", "preview")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, creationflags=subprocess.CREATE_NO_WINDOW)
-            if result.stderr.strip():
-                self.log("  " + result.stderr.strip(), "warning")
-            stdout = result.stdout.strip()
-            if not stdout:
-                self.log("  No files found.", "warning")
-                self.after(0, lambda: refs["find_btn"].config(state="normal"))
-                return
-            rows = list(csv.DictReader(io.StringIO(stdout)))
+            rows = self._run_ou_filelist_multiprocess(core, timeout=1800)
             if not rows:
-                self.log("  No files matched the search.", "warning")
+                self.log("  No files found.", "warning")
                 self.after(0, lambda: refs["find_btn"].config(state="normal"))
                 return
             col_map = {k.lower(): k for k in rows[0].keys()}
             name_key = col_map.get("name", "name")
             id_key = col_map.get("id", "id")
-            owner_key = col_map.get("owneremail", "")
+            owner_key = col_map.get("owner", "")
             self.log(f"  Found {len(rows)} file(s) across OU {ou_path}:", "preview")
             for r in rows:
                 owner = f"  owner: {r.get(owner_key)}" if owner_key else ""
                 self.log(f"    {r.get(name_key, '(unknown)')}  ({r.get(id_key, '')}){owner}", "preview")
             self.after(0, lambda: self._show_drive_find_results(rows, query, refs))
         except subprocess.TimeoutExpired:
-            self.log("  TIMEOUT during Find Files (OU scans may take longer for large OUs).", "error")
+            self.log("  TIMEOUT during Find Files (OU scans may take longer for very large OUs).", "error")
             self.after(0, lambda: refs["find_btn"].config(state="normal"))
         except FileNotFoundError:
             self.log("ERROR: 'gam' not found.", "error")
@@ -1391,7 +1416,7 @@ class GAMGui(tk.Tk):
         win.geometry("900x600")
         win.minsize(600, 400)
         win.columnconfigure(0, weight=1)
-        win.rowconfigure(2, weight=1)
+        win.rowconfigure(3, weight=1)
 
         sample = rows[0]
         col_map = {k.lower(): k for k in sample.keys()}
@@ -1400,7 +1425,7 @@ class GAMGui(tk.Tk):
         mime_key = col_map.get("mimetype", "")
         size_key = col_map.get("size", "")
         mod_key = col_map.get("modifiedtime", "")
-        owner_key = col_map.get("owneremail", "")
+        owner_key = col_map.get("owner", "")
 
         display_cols = [c for c in (name_key, owner_key, mime_key, size_key, mod_key, id_key) if c]
         if not display_cols:
@@ -1408,9 +1433,12 @@ class GAMGui(tk.Tk):
 
         _drive_labels = {
             "name": "File Name", "id": "File ID", "mimetype": "MIME Type",
-            "size": "Size (bytes)", "modifiedtime": "Modified Time", "owneremail": "Owner Email",
+            "size": "Size (bytes)", "modifiedtime": "Modified Time",
         }
-        col_labels = [_drive_labels.get(c.lower(), c) or c for c in display_cols]
+        col_labels = [
+            "Owner / Drive" if c == owner_key else (_drive_labels.get(c.lower(), c) or c)
+            for c in display_cols
+        ]
 
         def _export(fmt):
             default = "drive_results.csv" if fmt == "csv" else "drive_results.txt"
@@ -1446,23 +1474,23 @@ class GAMGui(tk.Tk):
         ttk.Button(btn_row, text="Export .txt", command=lambda: _export("txt")).pack(side="left", padx=(6, 0))
         ttk.Button(btn_row, text="Close", command=win.destroy).pack(side="right")
 
-        # Row 1: info labels
+        # Row 1-2: info labels (each on its own row so they don't overlap)
         ttk.Label(win, text=f"Query: {query}", font=("Segoe UI", 9),
                   style="Hint.TLabel").grid(row=1, column=0, sticky="w", padx=12, pady=(0, 2))
         ttk.Label(win, text=f"{len(rows)} file(s) matched  •  max 100 shown",
-                  style="Hint.TLabel").grid(row=1, column=0, sticky="w", padx=12, pady=(16, 4))
+                  style="Hint.TLabel").grid(row=2, column=0, sticky="w", padx=12, pady=(0, 4))
 
-        # Row 2: treeview (expands)
+        # Row 3: treeview (expands)
         frame = tk.Frame(win)
-        frame.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 10))
+        frame.grid(row=3, column=0, sticky="nsew", padx=12, pady=(0, 10))
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
         tree = ttk.Treeview(frame, columns=display_cols, show="headings", selectmode="browse")
-        col_widths = {"name": 240, "owneremail": 200, "mimetype": 160, "size": 70, "modifiedtime": 150, "id": 200}
-        for col in display_cols:
-            width = col_widths.get(col.lower(), 150)
-            tree.heading(col, text=col)
+        col_widths = {"name": 240, "mimetype": 160, "size": 70, "modifiedtime": 150, "id": 200}
+        for col, label in zip(display_cols, col_labels):
+            width = 220 if col == owner_key else col_widths.get(col.lower(), 150)
+            tree.heading(col, text=label)
             tree.column(col, width=width, minwidth=60)
 
         vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
@@ -1595,24 +1623,23 @@ class GAMGui(tk.Tk):
                 query = f"name contains '{clean}'"
 
                 if scope == "ou":
-                    list_cmd = ["gam", "ou_and_children", target, "print", "filelist"]
+                    core = ["ou_and_children", target, "print", "filelist"]
                     if drive_type == "shared" and shared_id:
-                        list_cmd += ["teamdriveid", shared_id]
-                    list_cmd += ["query", query, "fields", "id,name,ownerEmail", "maxfiles", "1000"]
-                    list_timeout = 120
+                        core += ["teamdriveid", shared_id]
+                    core += ["query", query, "fields", "id,name", "maxfiles", "1000"]
+                    self.log(f"  Scanning all users in OU {target} (large OUs can take several minutes)...", "preview")
+                    rows = self._run_ou_filelist_multiprocess(core, timeout=1800)
                 else:
                     list_cmd = ["gam", "user", target, "print", "filelist"]
                     if drive_type == "shared" and shared_id:
                         list_cmd += ["teamdriveid", shared_id]
                     list_cmd += ["query", query, "fields", "id,name", "maxfiles", "1000"]
-                    list_timeout = 60
+                    self.log(">> " + " ".join(list_cmd), "cmd")
+                    result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW)
+                    if result.stderr.strip():
+                        self.log("  " + result.stderr.strip(), "warning")
+                    rows = list(csv.DictReader(io.StringIO(result.stdout.strip()))) if result.stdout.strip() else []
 
-                self.log(">> " + " ".join(list_cmd), "cmd")
-                result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=list_timeout, creationflags=subprocess.CREATE_NO_WINDOW)
-                if result.stderr.strip():
-                    self.log("  " + result.stderr.strip(), "warning")
-
-                rows = list(csv.DictReader(io.StringIO(result.stdout.strip()))) if result.stdout.strip() else []
                 if not rows:
                     self.log("  No files found matching the query.", "warning")
                     self.after(0, lambda: [
@@ -1624,12 +1651,12 @@ class GAMGui(tk.Tk):
                 col_map = {k.lower(): k for k in rows[0].keys()}
                 id_key = col_map.get("id", "id")
                 name_key = col_map.get("name", "name")
-                owner_key = col_map.get("owneremail", "")
+                owner_key = col_map.get("owner", "")
                 self.log(f"  Found {len(rows)} file(s) — deleting...", "preview")
                 for row in rows:
                     fid = row.get(id_key, "")
                     fname = row.get(name_key, "(unknown)")
-                    # For OU scope use the file's ownerEmail; for user scope use target
+                    # For OU scope each row's Owner column is the account it was found under; for user scope it's always target
                     owner = row.get(owner_key, target) if (scope == "ou" and owner_key) else target
                     if fid and owner:
                         _do_delete(owner, fid, f"{fname} ({fid})")
