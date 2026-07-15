@@ -1,4 +1,5 @@
 import csv
+import fnmatch
 import io
 import os
 import re
@@ -12,7 +13,7 @@ import shlex
 import shutil
 import webbrowser
 
-VERSION = "26.7.15.02"
+VERSION = "26.7.15.03"
 
 
 class GAMGui(tk.Tk):
@@ -488,7 +489,8 @@ class GAMGui(tk.Tk):
         scope_frame.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
         ttk.Label(scope_frame, text="Scope:").pack(side="left", padx=(0, 12))
         ttk.Radiobutton(scope_frame, text="Single User", variable=scope_var, value="user").pack(side="left", padx=(0, 10))
-        ttk.Radiobutton(scope_frame, text="Organizational Unit", variable=scope_var, value="ou").pack(side="left")
+        ttk.Radiobutton(scope_frame, text="Organizational Unit", variable=scope_var, value="ou").pack(side="left", padx=(0, 10))
+        ttk.Radiobutton(scope_frame, text="Entire Domain", variable=scope_var, value="domain").pack(side="left")
 
         # Row 1: User email (single-user mode) — shown/hidden by scope
         email_label = ttk.Label(parent, text="User Email:")
@@ -1098,15 +1100,19 @@ class GAMGui(tk.Tk):
     # --- Drive tab helpers ---
 
     def _on_drive_scope_change(self, refs):
-        is_ou = refs["scope_var"].get() == "ou"
+        scope = refs["scope_var"].get()
         for w in ("email_label", "email_entry", "email_hint"):
             refs[w].grid_remove()
         for w in ("ou_label", "ou_frame", "ou_hint"):
             refs[w].grid_remove()
-        if is_ou:
+        if scope == "ou":
             refs["ou_label"].grid(row=1, column=0, sticky="w", pady=(0, 4))
             refs["ou_frame"].grid(row=1, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
             refs["ou_hint"].grid(row=2, column=1, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 10))
+            refs["fileid_radio"].config(state="disabled")
+            if refs["method_var"].get() == "fileid":
+                refs["method_var"].set("name")
+        elif scope == "domain":
             refs["fileid_radio"].config(state="disabled")
             if refs["method_var"].get() == "fileid":
                 refs["method_var"].set("name")
@@ -1115,6 +1121,16 @@ class GAMGui(tk.Tk):
             refs["email_entry"].grid(row=1, column=1, columnspan=2, sticky="ew", padx=(10, 0), pady=(0, 4))
             refs["email_hint"].grid(row=2, column=1, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 10))
             refs["fileid_radio"].config(state="normal")
+
+        # Domain-wide delete isn't offered here — too high-blast-radius for this tool.
+        # Use Single User or Organizational Unit scope for deletions.
+        refs["delete_btn"].config(state="disabled" if scope == "domain" else "normal")
+        refs["name_hint"].config(text=(
+            "Exact match, or use * / ? wildcards (e.g.  63783.*  or  report_202?.pdf )  •  case-insensitive"
+            if scope == "domain" else
+            "Finds files whose name contains this text  •  case-insensitive"
+        ))
+        self._update_drive_query(refs)
 
     def _on_drive_type_change(self, refs):
         refs["shared_label"].grid_remove()
@@ -1140,11 +1156,26 @@ class GAMGui(tk.Tk):
 
     def _update_drive_query(self, refs):
         name = refs["name_var"].get().strip()
-        if name:
+        if not name:
+            refs["drive_q_var"].set("")
+            return
+        if refs["scope_var"].get() == "domain":
+            refs["drive_q_var"].set(self._build_domain_query(name)[0])
+        else:
             clean = name.replace("'", "\\'")
             refs["drive_q_var"].set(f"name contains '{clean}'")
-        else:
-            refs["drive_q_var"].set("")
+
+    def _build_domain_query(self, pattern):
+        """Translate a filename pattern into a GAM Drive query plus whether client-side
+        glob filtering is still needed. Drive's query language has no wildcard operator,
+        so '*'/'?' patterns are narrowed server-side with the longest literal chunk and
+        the exact match is finished client-side with fnmatch."""
+        if "*" not in pattern and "?" not in pattern:
+            clean = pattern.replace("'", "\\'")
+            return f"name = '{clean}'", False
+        literal = max(re.split(r"[*?]", pattern), key=len)
+        clean = literal.replace("'", "\\'")
+        return f"name contains '{clean}'", True
 
     # --- Drive find ---
 
@@ -1174,6 +1205,17 @@ class GAMGui(tk.Tk):
             threading.Thread(
                 target=self._find_drive_by_name_ou_worker,
                 args=(ou_path, drive_type, shared_id, name, refs),
+                daemon=True,
+            ).start()
+        elif scope == "domain":
+            name = refs["name_var"].get().strip()
+            if not name:
+                messagebox.showwarning("Missing Input", "Please enter a file name to search for.")
+                refs["find_btn"].config(state="normal")
+                return
+            threading.Thread(
+                target=self._find_drive_by_name_domain_worker,
+                args=(drive_type, shared_id, name, refs),
                 daemon=True,
             ).start()
         else:
@@ -1267,7 +1309,7 @@ class GAMGui(tk.Tk):
         else:
             self.log("  " + "\n  ".join(lines), "warning")
 
-    def _run_ou_filelist_multiprocess(self, core_args, timeout, threads=20):
+    def _run_filelist_multiprocess(self, core_args, timeout, threads=20):
         # ou_and_children/all-users scopes run print filelist once per user, sequentially,
         # by default — a district-sized OU (10k+ users) blows past any sane timeout that
         # way. GAM's own multiprocess batching fans that out across worker processes, so
@@ -1301,7 +1343,7 @@ class GAMGui(tk.Tk):
 
         self.log(f"[FIND] OU: {ou_path}  •  scanning all users (large OUs can take several minutes)", "preview")
         try:
-            rows = self._run_ou_filelist_multiprocess(core, timeout=1800)
+            rows = self._run_filelist_multiprocess(core, timeout=1800)
             if not rows:
                 self.log("  No files found.", "warning")
                 self.after(0, lambda: refs["find_btn"].config(state="normal"))
@@ -1317,6 +1359,57 @@ class GAMGui(tk.Tk):
             self.after(0, lambda: self._show_drive_find_results(rows, query, refs))
         except subprocess.TimeoutExpired:
             self.log("  TIMEOUT during Find Files (OU scans may take longer for very large OUs).", "error")
+            self.after(0, lambda: refs["find_btn"].config(state="normal"))
+        except FileNotFoundError:
+            self.log("ERROR: 'gam' not found.", "error")
+            self.after(0, lambda: refs["find_btn"].config(state="normal"))
+
+    def _find_drive_by_name_domain_worker(self, drive_type, shared_id, pattern, refs):
+        query, needs_glob_filter = self._build_domain_query(pattern)
+
+        if needs_glob_filter:
+            literal = max(re.split(r"[*?]", pattern), key=len)
+            if len(literal) < 3:
+                self.log(
+                    "  Wildcard pattern needs at least 3 non-wildcard characters "
+                    "to keep a domain-wide scan scoped (e.g. '63783.*' not '6*.*').",
+                    "error",
+                )
+                self.after(0, lambda: refs["find_btn"].config(state="normal"))
+                return
+
+        core = ["all", "users", "print", "filelist"]
+        if drive_type == "shared" and shared_id:
+            core += ["teamdriveid", shared_id]
+        core += ["query", query, "fields", "id,name,mimeType,size,modifiedTime", "maxfiles", "500"]
+
+        self.log("[FIND] Entire Domain  •  scanning all users (this can take several minutes)", "preview")
+        try:
+            rows = self._run_filelist_multiprocess(core, timeout=1800)
+            if not rows:
+                self.log("  No files found.", "warning")
+                self.after(0, lambda: refs["find_btn"].config(state="normal"))
+                return
+            col_map = {k.lower(): k for k in rows[0].keys()}
+            name_key = col_map.get("name", "name")
+            id_key = col_map.get("id", "id")
+            owner_key = col_map.get("owner", "")
+
+            if needs_glob_filter:
+                pattern_l = pattern.lower()
+                rows = [r for r in rows if fnmatch.fnmatch(r.get(name_key, "").lower(), pattern_l)]
+                if not rows:
+                    self.log("  No files matched the wildcard pattern.", "warning")
+                    self.after(0, lambda: refs["find_btn"].config(state="normal"))
+                    return
+
+            self.log(f"  Found {len(rows)} file(s) across the domain:", "preview")
+            for r in rows:
+                owner = f"  owner: {r.get(owner_key)}" if owner_key else ""
+                self.log(f"    {r.get(name_key, '(unknown)')}  ({r.get(id_key, '')}){owner}", "preview")
+            self.after(0, lambda: self._show_drive_find_results(rows, query, refs))
+        except subprocess.TimeoutExpired:
+            self.log("  TIMEOUT during domain-wide Find Files.", "error")
             self.after(0, lambda: refs["find_btn"].config(state="normal"))
         except FileNotFoundError:
             self.log("ERROR: 'gam' not found.", "error")
@@ -1515,6 +1608,14 @@ class GAMGui(tk.Tk):
         shared_id = refs["shared_var"].get().strip()
         purge = refs["purge_var"].get()
 
+        if scope == "domain":
+            messagebox.showwarning(
+                "Not Supported",
+                "Domain-wide delete isn't offered here. Switch to Single User or "
+                "Organizational Unit scope to delete files.",
+            )
+            return
+
         if drive_type == "shared" and not shared_id:
             messagebox.showwarning("Missing Input", "Please enter the Shared Drive ID.")
             return
@@ -1628,7 +1729,7 @@ class GAMGui(tk.Tk):
                         core += ["teamdriveid", shared_id]
                     core += ["query", query, "fields", "id,name", "maxfiles", "1000"]
                     self.log(f"  Scanning all users in OU {target} (large OUs can take several minutes)...", "preview")
-                    rows = self._run_ou_filelist_multiprocess(core, timeout=1800)
+                    rows = self._run_filelist_multiprocess(core, timeout=1800)
                 else:
                     list_cmd = ["gam", "user", target, "print", "filelist"]
                     if drive_type == "shared" and shared_id:

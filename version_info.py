@@ -1,7 +1,7 @@
 VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(26, 7, 15, 2),
-        prodvers=(26, 7, 15, 2),
+        filevers=(26, 7, 15, 3),
+        prodvers=(26, 7, 15, 3),
         mask=0x3F,
         flags=0x0,
         OS=0x4,
@@ -16,11 +16,11 @@ VSVersionInfo(
                 [
                     StringStruct("CompanyName", "Marshall Public Schools"),
                     StringStruct("FileDescription", "GAM GUI"),
-                    StringStruct("FileVersion", "26.7.15.02"),
+                    StringStruct("FileVersion", "26.7.15.03"),
                     StringStruct("InternalName", "GAM GUI"),
                     StringStruct("OriginalFilename", "GAM GUI.exe"),
                     StringStruct("ProductName", "GAM GUI"),
-                    StringStruct("ProductVersion", "26.7.15.02"),
+                    StringStruct("ProductVersion", "26.7.15.03"),
                 ],
             )
         ]),
